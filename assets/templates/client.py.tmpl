@@ -1,0 +1,172 @@
+"""Template: unofficial-style Client. Replace BASE_URL and paths with captures."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import uuid
+from typing import Any, Optional
+
+import requests
+
+from .exceptions import APIError, AuthError, RateLimitError
+from .parsing import parse_json_answer, parse_sse_completions
+
+DEFAULT_BASE_URL = "https://example.com"  # TODO: set from captures
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) "
+    "Gecko/20100101 Firefox/115.0"
+)
+
+
+class Client:
+    def __init__(
+        self,
+        cookie: Optional[str] = None,
+        *,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout: float = 60.0,
+        demo: bool = False,
+    ) -> None:
+        self.cookie = cookie or os.environ.get("SERVICE_COOKIE", "")
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self.demo = demo or not self.cookie
+
+        self.session = requests.Session()
+        if not self.demo:
+            self.session.headers.update(self._headers())
+            self.organization_id = self._get_organization_id()
+        else:
+            self.organization_id = str(uuid.uuid4())
+            self._demo_chats: dict[str, dict[str, Any]] = {}
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "User-Agent": USER_AGENT,
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            "Cookie": self.cookie,
+            "Origin": self.base_url,
+            "Referer": f"{self.base_url}/",
+        }
+
+    def _request(self, method: str, path: str, **kwargs) -> requests.Response:
+        url = path if path.startswith("http") else f"{self.base_url}{path}"
+        kwargs.setdefault("timeout", self.timeout)
+        resp = self.session.request(method, url, **kwargs)
+        if resp.status_code in (401, 403):
+            raise AuthError(resp.status_code, resp.text[:500])
+        if resp.status_code == 429:
+            raise RateLimitError(resp.status_code, resp.text[:500])
+        if resp.status_code >= 400:
+            raise APIError(resp.status_code, resp.text[:500])
+        return resp
+
+    def _get_organization_id(self) -> str:
+        # TODO: replace path with capture
+        resp = self._request("GET", "/api/organizations")
+        data = resp.json()
+        return data[0]["uuid"]
+
+    def list_all_conversations(self) -> list[dict[str, Any]]:
+        if self.demo:
+            return [
+                {"uuid": k, "name": v.get("name", "")}
+                for k, v in self._demo_chats.items()
+            ]
+        path = f"/api/organizations/{self.organization_id}/chat_conversations"
+        return self._request("GET", path).json()
+
+    def create_new_chat(self, name: str = "") -> dict[str, Any]:
+        chat_id = str(uuid.uuid4())
+        if self.demo:
+            self._demo_chats[chat_id] = {"name": name or "New chat", "messages": []}
+            return {"uuid": chat_id, "name": name or "New chat"}
+
+        path = f"/api/organizations/{self.organization_id}/chat_conversations"
+        payload = {"uuid": chat_id, "name": name}
+        return self._request("POST", path, data=json.dumps(payload)).json()
+
+    def send_message(
+        self,
+        prompt: str,
+        conversation_id: str,
+        attachment: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ) -> str:
+        if attachment:
+            prompt = f"[attachment: {attachment}]\n\n{prompt}"
+
+        if self.demo:
+            chat = self._demo_chats.setdefault(
+                conversation_id, {"name": "", "messages": []}
+            )
+            chat["messages"].append({"role": "user", "content": prompt})
+            reply = f"[demo] {prompt}"
+            chat["messages"].append({"role": "assistant", "content": reply})
+            return reply
+
+        payload = {
+            "organization_uuid": self.organization_id,
+            "conversation_uuid": conversation_id,
+            "text": prompt,
+            "attachments": [],
+        }
+        # TODO: replace path with capture (e.g. /api/append_message)
+        resp = self._request(
+            "POST",
+            "/api/append_message",
+            data=json.dumps(payload),
+            timeout=timeout or self.timeout,
+        )
+        ctype = resp.headers.get("Content-Type", "")
+        if "event-stream" in ctype or resp.text.lstrip().startswith("data:"):
+            return parse_sse_completions(resp.text)
+        try:
+            return parse_json_answer(resp.json())
+        except Exception:
+            return resp.text
+
+    def chat_conversation_history(self, conversation_id: str) -> dict[str, Any]:
+        if self.demo:
+            chat = self._demo_chats.get(conversation_id) or {"messages": []}
+            return {
+                "uuid": conversation_id,
+                "chat_messages": chat.get("messages", []),
+            }
+        path = (
+            f"/api/organizations/{self.organization_id}"
+            f"/chat_conversations/{conversation_id}"
+        )
+        return self._request("GET", path).json()
+
+    def delete_conversation(self, conversation_id: str) -> bool:
+        if self.demo:
+            return self._demo_chats.pop(conversation_id, None) is not None
+        path = (
+            f"/api/organizations/{self.organization_id}"
+            f"/chat_conversations/{conversation_id}"
+        )
+        resp = self._request("DELETE", path)
+        return resp.status_code in (200, 204)
+
+    def rename_chat(self, title: str, conversation_id: str) -> bool:
+        if self.demo:
+            if conversation_id not in self._demo_chats:
+                return False
+            self._demo_chats[conversation_id]["name"] = title
+            return True
+        payload = {
+            "organization_uuid": self.organization_id,
+            "conversation_uuid": conversation_id,
+            "title": title,
+        }
+        resp = self._request("POST", "/api/rename_chat", data=json.dumps(payload))
+        return resp.status_code == 200
+
+    def reset_all(self) -> bool:
+        for c in list(self.list_all_conversations()):
+            self.delete_conversation(c["uuid"])
+        return True

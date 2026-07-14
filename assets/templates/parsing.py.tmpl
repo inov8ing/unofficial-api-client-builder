@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import json
+import re
+from typing import Any
+
+
+def parse_sse_completions(body: str, field: str = "completion") -> str:
+    body = re.sub(r"\n+", "\n", body).strip()
+    parts: list[str] = []
+    for line in body.split("\n"):
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        raw = line[5:].strip()
+        if not raw or raw == "[DONE]":
+            continue
+        try:
+            event = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if field in event:
+            parts.append(str(event[field]))
+        elif "delta" in event and isinstance(event["delta"], str):
+            parts.append(event["delta"])
+        elif "text" in event:
+            parts.append(str(event["text"]))
+    return "".join(parts)
+
+
+def parse_json_answer(data: dict[str, Any]) -> str:
+    for key in ("completion", "answer", "text", "message", "content"):
+        val = data.get(key)
+        if isinstance(val, str):
+            return val
+        if isinstance(val, list) and val:
+            first = val[0]
+            if isinstance(first, dict) and "text" in first:
+                return str(first["text"])
+    raise ValueError(f"Unrecognized JSON shape keys={list(data)[:12]}")

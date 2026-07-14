@@ -1,0 +1,13 @@
+class APIError(Exception):
+    def __init__(self, status_code: int, body: str = "") -> None:
+        self.status_code = status_code
+        self.body = body
+        super().__init__(f"APIError {status_code}: {body}")
+
+
+class AuthError(APIError):
+    """Cookie/token missing, expired, or forbidden."""
+
+
+class RateLimitError(APIError):
+    """HTTP 429 or provider rate limit payload."""

@@ -1,0 +1,73 @@
+# {{PROJECT_NAME}}
+
+Unofficial Python client for **{{SERVICE_NAME}}** private web endpoints.
+
+> **Disclaimer:** Not affiliated with or endorsed by {{SERVICE_NAME}}.  
+> Endpoints may break without notice. Prefer the **official API** for production.  
+> Use only with accounts/systems you are allowed to automate. Cookie automation may violate ToS.
+
+## Install
+
+```bash
+pip install -e .
+```
+
+## Auth
+
+```bash
+# .env (do not commit)
+export SERVICE_COOKIE='paste full cookie from DevTools Network tab'
+```
+
+## Quickstart
+
+```python
+import os
+from {{IMPORT_NAME}} import Client
+
+client = Client(cookie=os.environ["SERVICE_COOKIE"])
+chat = client.create_new_chat()
+print(client.send_message("Hello!", chat["uuid"]))
+```
+
+Demo (offline, no cookie):
+
+```python
+from {{IMPORT_NAME}} import Client
+c = Client(demo=True)
+cid = c.create_new_chat()["uuid"]
+print(c.send_message("hi", cid))
+```
+
+## Console chatbot
+
+```bash
+{{SCRIPT_NAME}}
+# or
+python -m usecases.console_chatbot
+```
+
+## API
+
+| Method | Purpose |
+|--------|---------|
+| `list_all_conversations()` | List chats |
+| `create_new_chat(name="")` | New chat → `{"uuid"}` |
+| `send_message(prompt, conversation_id, attachment=None)` | Send + get answer string |
+| `chat_conversation_history(conversation_id)` | History JSON |
+| `delete_conversation(conversation_id)` | Delete → bool |
+| `rename_chat(title, conversation_id)` | Rename → bool |
+| `reset_all()` | Delete all |
+
+## Last verified
+
+- Date: {{DATE}}
+- Against: {{SERVICE_NAME}} web UI
+
+## Official alternative
+
+If {{SERVICE_NAME}} provides a public API/SDK, use that for production workloads.
+
+## License
+
+MIT

@@ -1,0 +1,53 @@
+"""Sample console chatbot usecase — prove the Client is reusable."""
+
+from __future__ import annotations
+
+import os
+import sys
+
+
+def main() -> None:
+    # Adjust import to package name after scaffold
+    from IMPORT_NAME import Client
+
+    cookie = os.environ.get("SERVICE_COOKIE", "")
+    demo = not cookie
+    client = Client(cookie=cookie or None, demo=demo)
+    chat = client.create_new_chat(name="Console")
+    cid = chat["uuid"]
+
+    print(f"mode={'demo' if demo else 'live'} chat={cid}")
+    print("commands: /new /list /history /quit")
+
+    while True:
+        try:
+            user = input("\nYou: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye.")
+            break
+        if not user:
+            continue
+        if user in {"/quit", "/exit", "quit"}:
+            break
+        if user == "/new":
+            cid = client.create_new_chat()["uuid"]
+            print("new", cid)
+            continue
+        if user == "/list":
+            for c in client.list_all_conversations():
+                print(" ", c)
+            continue
+        if user == "/history":
+            print(client.chat_conversation_history(cid))
+            continue
+        try:
+            print("\nBot:", client.send_message(user, cid))
+        except Exception as exc:  # noqa: BLE001
+            print("Error:", exc)
+
+
+if __name__ == "__main__":
+    # allow `python -m usecases.console_chatbot` after install
+    if __package__ is None:
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    main()
