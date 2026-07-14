@@ -1,6 +1,6 @@
 <div align="center">
 
-# Unofficial API Client Builder
+# Unofficial API Client Builder (Coding Agent Skill)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -8,7 +8,7 @@
 
 </div>
 
-A robust, reusable toolkit and workflow designed for building sophisticated Python client wrappers for private web application endpoints. This project standardizes the approach to capturing and automating web sessions, handling HTTP interactions, and packaging the resulting client for easy integration.
+**A specialized skill for coding agents** designed to help users develop, experiment with, and scaffold sophisticated Python client wrappers for private web application endpoints. This workflow standardizes the approach to capturing and automating web sessions, handling HTTP interactions, and packaging the resulting client for easy integration.
 
 ## Key Features
 
