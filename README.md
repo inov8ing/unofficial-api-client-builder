@@ -85,6 +85,18 @@ For advanced usage, refer to the documentation in the `references/` directory.
 
 Contributions are welcome! Please ensure that any additions or changes adhere to the non-negotiable guardrails outlined in the project documentation. Ensure no sensitive information (such as personal cookies or tokens) is ever committed.
 
+## Disclaimer
+
+> [!WARNING]
+> This toolkit is for educational and developmental purposes. The resulting unofficial API clients are not affiliated with, endorsed by, or officially connected to the target services.
+> Always respect the Terms of Service of the platforms you interact with, avoid aggressive scraping, and **never use these tools to bypass paid paywalls, CAPTCHAs, or account security**. Prefer official APIs for production environments.
+
+## Author / Created By
+
+This project was built and is maintained by **[inov8ing](https://github.com/inov8ing)**. 
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/inov8ing/unofficial-api-client-builder/issues) if you want to contribute.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
